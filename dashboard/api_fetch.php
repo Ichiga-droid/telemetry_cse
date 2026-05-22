@@ -1,10 +1,33 @@
 <?php
+/*
+ * api_fetch.php
+ *
+ * Purpose:
+ *   Server-side proxy for fetching the live reactor JSON from the
+ *   configured `api_base_url`. The endpoint returns the API payload
+ *   to the caller (the dashboard JS) and also saves each successful
+ *   response either locally under `dashboard/storage` or to an
+ *   Azure Blob container when `settings.json` contains a SAS token
+ *   and a blob base URL.
+ *
+ * Interconnections:
+ *   - Reads `dashboard/settings.json` to determine `api_base_url`,
+ *     `azure_blob_url` and `azure_sas_token`.
+ *   - The dashboard UI calls this endpoint via fetch() to get live
+ *     data and to persist each sample for history browsing.
+ *
+ * Notes:
+ *   - The script requires a valid logged-in session. It returns a
+ *     JSON error message if the API cannot be reached.
+ */
+
 session_start();
 if (!isset($_SESSION['username'])) {
     header('Location: ../login.php');
     exit;
 }
 
+// Load settings and compute effective API/Storage configuration
 $settingsPath = __DIR__ . '/settings.json';
 $apiBaseUrl = 'https://api.entreprise-b.com';
 $azureBlobUrl = '';
@@ -12,16 +35,20 @@ $azureSasToken = '';
 if (file_exists($settingsPath)) {
     $settings = json_decode(file_get_contents($settingsPath), true);
     if (!empty($settings['api_base_url'])) {
+        // Ensure no trailing slash so we can append filenames or paths
         $apiBaseUrl = rtrim($settings['api_base_url'], '/');
     }
     if (!empty($settings['azure_blob_url'])) {
         $azureBlobUrl = rtrim($settings['azure_blob_url'], '/');
     }
     if (!empty($settings['azure_sas_token'])) {
+        // Store SAS token without leading ? for consistent concatenation
         $azureSasToken = ltrim($settings['azure_sas_token'], '?');
     }
 }
 
+// Fetch the live API payload. The code uses file_get_contents() for
+// simplicity; in production you might prefer curl with timeouts.
 $response = @file_get_contents($apiBaseUrl);
 if ($response === false) {
     header('Content-Type: application/json');
@@ -31,6 +58,8 @@ if ($response === false) {
 
 $fileName = gmdate('Y-m-d_H-i-s') . '.json';
 
+// If Azure config is present, attempt to upload as a BlockBlob via PUT.
+// On failure (non-2xx), fallback to local storage.
 if ($azureBlobUrl !== '' && $azureSasToken !== '') {
     $uploadUrl = $azureBlobUrl . '/' . rawurlencode($fileName) . '?' . $azureSasToken;
     $ch = curl_init($uploadUrl);
@@ -47,6 +76,7 @@ if ($azureBlobUrl !== '' && $azureSasToken !== '') {
     curl_close($ch);
 
     if ($status < 200 || $status >= 300) {
+        // Azure upload failed, save locally for debugging and history
         $storagePath = __DIR__ . '/storage';
         if (!is_dir($storagePath)) {
             mkdir($storagePath, 0755, true);
@@ -54,6 +84,7 @@ if ($azureBlobUrl !== '' && $azureSasToken !== '') {
         file_put_contents($storagePath . '/' . $fileName, $response);
     }
 } else {
+    // No Azure configured: persist locally under dashboard/storage
     $storagePath = __DIR__ . '/storage';
     if (!is_dir($storagePath)) {
         mkdir($storagePath, 0755, true);
@@ -61,5 +92,6 @@ if ($azureBlobUrl !== '' && $azureSasToken !== '') {
     file_put_contents($storagePath . '/' . $fileName, $response);
 }
 
+// Return the live API payload to the client
 header('Content-Type: application/json');
 echo $response;

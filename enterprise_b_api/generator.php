@@ -1,13 +1,27 @@
 <?php
-// Simple generator for Enterprise B API (sensor data)
+/*
+ * enterprise_b_api/generator.php
+ *
+ * Purpose:
+ *   Produces a realistic-looking JSON payload representing reactor
+ *   sensor telemetry. The function `generate_data()` is intentionally
+ *   simple and deterministic in shape so the dashboard can render
+ *   temperature, pressure, status, alerts and additional details.
+ *
+ * Notes:
+ *   - Value ranges are produced using `mt_rand()` and then scaled to
+ *     readable units. This is a mock; in real deployments the API
+ *     would return real sensor values.
+ */
+
 function generate_data() {
-    // Temperature in Celsius (realistic reactor sensor mock)
+    // Temperature in Celsius (mock range)
     $temperature = round(mt_rand(2600, 3400) / 100, 2); // 26.00 - 34.00 °C
 
-    // Pressure in bar
+    // Pressure in bar (mock range)
     $pressure = round(mt_rand(15000, 22000) / 100, 2); // 150.00 - 220.00 bar
 
-    // Determine status
+    // Determine simplified status and alerts based on thresholds
     $status = 'OK';
     $alerts = [];
     if ($temperature > 33 || $pressure > 210) {
@@ -18,7 +32,7 @@ function generate_data() {
         $alerts[] = 'Sensor reading approaching critical threshold';
     }
 
-    // Additional synthetic details
+    // Additional synthetic details that the dashboard can display
     $details = [
         'sensor_core_1' => round(mt_rand(2500, 3400) / 100, 2),
         'sensor_core_2' => round(mt_rand(2500, 3400) / 100, 2),

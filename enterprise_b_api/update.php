@@ -1,5 +1,19 @@
 <?php
-// Update override state used by the API (no auth for simplicity)
+/*
+ * enterprise_b_api/update.php
+ *
+ * Purpose:
+ *   Accepts a JSON payload and saves it to `state.json` as an override
+ *   for the mock API. The saved JSON will be merged onto generated
+ *   payloads by `index.php`, allowing operators to simulate specific
+ *   sensor conditions.
+ *
+ * Notes:
+ *   - This endpoint intentionally does not implement authentication
+ *     to keep the mock API simple for local development. Do NOT use
+ *     this pattern in production.
+ */
+
 header('Content-Type: application/json');
 
 $stateFile = __DIR__ . '/state.json';
@@ -18,7 +32,7 @@ if ($data === null) {
     exit;
 }
 
-// Save override state
+// Persist override state for the API to use on subsequent requests
 file_put_contents($stateFile, json_encode($data, JSON_PRETTY_PRINT));
 
 echo json_encode(['success' => true, 'saved' => $data]);

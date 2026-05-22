@@ -1,4 +1,32 @@
 <?php
+/*
+ * dashboard.php
+ *
+ * Purpose:
+ *   Main dashboard UI for the Reactor Monitoring feature.
+ *   Shows real-time metrics, recent historical files, and a simple
+ *   maintenance planning area. This is a presentation page only;
+ *   live data and persisted history/maintenance are provided by
+ *   companion endpoints in the same folder (api_fetch.php,
+ *   history.php, maintenance.php, store_data.php).
+ *
+ * Interconnections:
+ *   - Includes `../includes/header.html` and `../includes/navbar.html`
+ *     to reuse site-wide layout and session initialization.
+ *   - The JavaScript client `js/dashboard.js` calls:
+ *       - `api_fetch.php` to fetch live reactor JSON and trigger
+ *         saving of that JSON as files (or to Azure blob storage)
+ *       - `history.php` to list and retrieve saved JSON files
+ *       - `maintenance.php` to list and save maintenance notes
+ *   - `settings.php` provides a simple UI to change `api_base_url`,
+ *     polling interval, and optional Azure Blob settings which affect
+ *     `api_fetch.php` and `store_data.php` behavior.
+ *
+ * Security / auth:
+ *   This page requires a logged-in user; the session check below
+ *   prevents unauthenticated access and redirects to the login page.
+ */
+
 session_start();
 if (!isset($_SESSION['username'])) {
     header('Location: ../login.php');

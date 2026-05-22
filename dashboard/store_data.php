@@ -1,4 +1,19 @@
 <?php
+/*
+ * store_data.php
+ *
+ * Purpose:
+ *   Generic endpoint that accepts POSTed JSON payloads and persists
+ *   them either to local storage (`dashboard/storage`) or to Azure
+ *   Blob storage when configured via `settings.json`.
+ *
+ * Interconnections:
+ *   - Used when an external client or the UI wants to push a JSON
+ *     snapshot into the same history pipeline used by `api_fetch.php`.
+ *   - Reads `dashboard/settings.json` to determine whether to try an
+ *     Azure upload (SAS token) or fallback to local filesystem.
+ */
+
 session_start();
 if (!isset($_SESSION['username'])) {
     http_response_code(401);
@@ -6,6 +21,7 @@ if (!isset($_SESSION['username'])) {
     exit;
 }
 
+// Only allow POST to create data
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'method not allowed']);
@@ -19,6 +35,7 @@ if (trim($body) === '') {
     exit;
 }
 
+// Load optional Azure settings
 $settingsPath = __DIR__ . '/settings.json';
 $azureBlobUrl = '';
 $azureSasToken = '';
@@ -34,6 +51,7 @@ if (file_exists($settingsPath)) {
 
 $fileName = gmdate('Y-m-d_H-i-s') . '.json';
 
+// Try Azure upload first when configured, otherwise persist locally
 if ($azureBlobUrl !== '' && $azureSasToken !== '') {
     $uploadUrl = $azureBlobUrl . '/' . rawurlencode($fileName) . '?' . $azureSasToken;
     $ch = curl_init($uploadUrl);
@@ -50,6 +68,7 @@ if ($azureBlobUrl !== '' && $azureSasToken !== '') {
     curl_close($ch);
 
     if ($status < 200 || $status >= 300) {
+        // On any non-2xx result, fallback to local storage
         $storagePath = __DIR__ . '/storage';
         if (!is_dir($storagePath)) {
             mkdir($storagePath, 0755, true);

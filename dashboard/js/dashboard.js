@@ -1,4 +1,23 @@
+/**
+ * js/dashboard.js
+ *
+ * Purpose:
+ *   Client-side behavior for the Reactor Monitoring dashboard. This
+ *   script is responsible for:
+ *     - polling `api_fetch.php` for live reactor JSON
+ *     - rendering realtime values into the dashboard DOM
+ *     - loading the list of historical files from `history.php`
+ *     - loading and saving maintenance notes via `maintenance.php`
+ *
+ * Interconnections:
+ *   - `api_fetch.php` returns live JSON and persists snapshots to
+ *     `dashboard/storage` (or to Azure when configured).
+ *   - `history.php` provides file listings and file contents.
+ *   - `maintenance.php` handles GET/POST of maintenance notes.
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Default poll interval used in this client; can be tuned via settings.php
     const realtimeInterval = 60000;
 
     document.getElementById('maintenanceForm').addEventListener('submit', async event => {
@@ -12,6 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadMaintenance();
     });
 
+    // Fetch live data from the server; server also persists the JSON
+    // snapshot for history browsing. Errors are surfaced in a small
+    // status element on the page so the operator can see failures.
     async function fetchRealtime() {
         const output = document.getElementById('apiStatus');
         try {
@@ -28,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Load the list of recent saved JSON files and populate the left column
     async function fetchHistory() {
         const historyList = document.getElementById('historyList');
         try {
@@ -54,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Request a particular historical JSON file and show its contents
     async function loadHistoryFile(name) {
         const details = document.getElementById('historyDetails');
         try {
@@ -69,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Load maintenance notes and render into the maintenance list
     async function loadMaintenance() {
         const list = document.getElementById('maintenanceList');
         try {
@@ -94,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // POST a maintenance note to the server
     async function saveMaintenance(note) {
         try {
             await fetch('maintenance.php', {
@@ -106,6 +132,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Given the live API JSON, update UI elements (status, metrics,
+    // alerts) and populate the details table.
     function renderRealtime(data) {
         const status = document.getElementById('reactorStatus');
         const temperature = document.getElementById('reactorTemperature');
@@ -129,8 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Initial population on page load
     fetchRealtime();
     fetchHistory();
     loadMaintenance();
+    // Poll for live data periodically
     setInterval(fetchRealtime, realtimeInterval);
 });

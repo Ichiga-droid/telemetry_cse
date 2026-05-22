@@ -1,4 +1,24 @@
 <?php
+/*
+ * settings.php
+ *
+ * Purpose:
+ *   Provides a small UI for changing dashboard behaviour. Settings are
+ *   stored locally in `dashboard/settings.json` and are read by
+ *   `api_fetch.php` and `store_data.php` to control:
+ *     - `api_base_url`: where to fetch live reactor JSON from
+ *     - `poll_interval`: how often the client should poll for live data
+ *     - `azure_blob_url` and `azure_sas_token`: optional Azure Blob
+ *       configuration used to upload saved JSON files remotely. If the
+ *       SAS token and blob URL are empty, files are stored locally in
+ *       `dashboard/storage` instead.
+ *
+ * Interconnections:
+ *   - Writes settings to `dashboard/settings.json` using `file_put_contents()`.
+ *   - The dashboard page (`dashboard.php`) links to this page to allow
+ *     administrators to update configuration without editing files.
+ */
+
 session_start();
 if (!isset($_SESSION['username'])) {
     header('Location: ../login.php');
@@ -11,6 +31,7 @@ include '../includes/navbar.html';
 
 $settingsPath = __DIR__ . '/settings.json';
 $settings = [];
+// Load existing settings if present
 if (file_exists($settingsPath)) {
     $settings = json_decode(file_get_contents($settingsPath), true);
     if (!is_array($settings)) {
@@ -19,11 +40,13 @@ if (file_exists($settingsPath)) {
 }
 
 $success = false;
+// Handle save requests from the form
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $settings['api_base_url'] = trim($_POST['api_base_url'] ?? '');
     $settings['poll_interval'] = max(10, (int) ($_POST['poll_interval'] ?? 60));
     $settings['azure_blob_url'] = trim($_POST['azure_blob_url'] ?? '');
     $settings['azure_sas_token'] = trim($_POST['azure_sas_token'] ?? '');
+    // Persist as pretty-printed JSON for easy manual editing in dev
     file_put_contents($settingsPath, json_encode($settings, JSON_PRETTY_PRINT));
     $success = true;
 }
