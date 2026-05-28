@@ -17,9 +17,6 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Default poll interval used in this client; can be tuned via settings.php
-    const realtimeInterval = 60000;
-
     document.getElementById('maintenanceForm').addEventListener('submit', async event => {
         event.preventDefault();
         const note = document.getElementById('maintenanceNote').value.trim();
@@ -44,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const data = await response.json();
             renderRealtime(data);
+            renderSummary(data);
             output.textContent = 'Live reactor data loaded';
         } catch (error) {
             output.textContent = 'Unable to fetch realtime data';
@@ -88,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const data = await response.json();
             details.textContent = JSON.stringify(data, null, 2);
+            renderSummary(data);
         } catch (error) {
             details.textContent = 'Unable to load file contents';
         }
@@ -155,6 +154,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailsBody.appendChild(row);
             });
         }
+    }
+
+    function renderSummary(data) {
+        const summaryBody = document.getElementById('summaryTableBody');
+        const badge = document.getElementById('summaryStatusBadge');
+        if (!summaryBody || !badge) {
+            return;
+        }
+
+        const status = data.status || 'Unknown';
+        const alerts = Array.isArray(data.alerts) ? data.alerts.join(', ') : (data.alerts || 'None');
+        const rows = [];
+
+        rows.push(`<tr><th>Timestamp</th><td>${data.timestamp || 'N/A'}</td></tr>`);
+        rows.push(`<tr><th>Temperature</th><td>${data.temperature !== undefined ? `${data.temperature} °C` : 'N/A'}</td></tr>`);
+        rows.push(`<tr><th>Pressure</th><td>${data.pressure !== undefined ? `${data.pressure} bar` : 'N/A'}</td></tr>`);
+        rows.push(`<tr><th>Status</th><td>${status}</td></tr>`);
+        rows.push(`<tr><th>Alerts</th><td>${alerts}</td></tr>`);
+
+        if (data.details && typeof data.details === 'object') {
+            Object.entries(data.details).forEach(([key, value]) => {
+                rows.push(`<tr><th>${key}</th><td>${value}</td></tr>`);
+            });
+        }
+
+        summaryBody.innerHTML = rows.join('');
+
+        badge.textContent = status;
+        badge.className = 'status-summary ' + (status.toLowerCase() === 'critical' ? 'status-critical' : status.toLowerCase() === 'warning' ? 'status-warning' : 'status-ok');
     }
 
     // Initial population on page load
