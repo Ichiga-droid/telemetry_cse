@@ -12,7 +12,7 @@ $db_host = '127.0.0.1';
 DEFINE ('DB_USER', $db_user);
 DEFINE ('DB_PASSWORD', $db_password);
 DEFINE ('DB_HOST', $db_host);
-DEFINE ('DB_NAME', 'picturegallery');
+DEFINE ('DB_NAME', 'telemetry');
 
 
 
